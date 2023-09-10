@@ -1,4 +1,6 @@
 import { userRepo } from "@/helpers/api/UsersRepo";
+import { validateUpdate, validateUpdateWithToken } from "@/helpers/schemas/updateSchema";
+import { verifyJwt } from "@/lib/token";
 
 export async function GET(req: Request) {
   try {
@@ -27,15 +29,32 @@ export async function DELETE(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const url = new URL(req.url);
-    const id = url.searchParams.get("id");
-    if (!id) {
-      return new Response("You have to provide id");
-    }
     const body = await req.json();
-    await userRepo.update(id, body);
-    return new Response("Ok");
+    const parsedBody = validateUpdateWithToken.parse(body);
+    const userId = (await verifyJwt(parsedBody.token)).sub;
+
+    if (!userId) {
+      return new Response("Could not find id", { status: 400 });
+    }
+    const user: UserFromDb = await userRepo.getById(userId);
+    // if (user._id.toString() !== userId) {
+    //   return new Response("Unauthorized", { status: 401 });
+    // }
+    const passwordMatch = await userRepo.verifyPassword(parsedBody.confirmPassword, user.hash);
+    if (!passwordMatch) {
+      return new Response("You entered wrong password", { status: 401 });
+    }
+    const payload = {
+      username: parsedBody.username,
+      firstName: parsedBody.firstName,
+      lastName: parsedBody.lastName,
+    };
+    console.log("userId", userId);
+    console.log("payload", payload);
+
+    const userY = await userRepo.update2(userId, payload);
+    return new Response(JSON.stringify(userY), { status: 200 });
   } catch (error) {
-    return new Response("Could not update user", { status: 500 });
+    return new Response("Could not update user" + error, { status: 500 });
   }
 }

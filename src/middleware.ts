@@ -12,8 +12,9 @@ let redirectToLogin: boolean = false;
 export async function middleware(req: NextRequest) {
   let token: string | undefined;
   const pathname = req.nextUrl.pathname;
-
-  if (req.headers.get("Authorization")?.startsWith("Bearer ")) {
+  if (req.cookies.has("token")) {
+    token = req.cookies.get("token")?.value;
+  } else if (req.headers.get("Authorization")?.startsWith("Bearer ")) {
     token = req.headers.get("Authorization")?.substring(7);
   }
 
@@ -29,7 +30,7 @@ export async function middleware(req: NextRequest) {
     if (token) {
       const { sub } = await verifyJwt(token);
       if (sub) {
-        response.headers.set("X-USER_ID", sub);
+        response.headers.set("X-USER-ID", sub);
         (req as AuthenticatedRequest).user = { id: sub };
       }
     }

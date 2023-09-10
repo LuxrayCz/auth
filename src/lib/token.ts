@@ -1,6 +1,6 @@
 import { jwtVerify } from "jose";
 
-export const verifyJwt = async <T>(token: string) => {
+export const verifyJwt = async (token: string) => {
   try {
     return (await jwtVerify(token, new TextEncoder().encode(process.env.JWT_KEY))).payload;
   } catch (error) {

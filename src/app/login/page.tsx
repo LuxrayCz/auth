@@ -12,6 +12,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
+import { loginSchema, loginType } from "@/helpers/schemas/loginSchema";
+import { useStore } from "@/lib/zustand/store";
 
 const page = () => {
   //TOASTER
@@ -19,34 +21,36 @@ const page = () => {
   //ROUTER
   const router = useRouter();
   //MUTATION
-  const { mutate: createUser, isLoading } = useMutation({
-    mutationFn: async ({ username, password, firstName, lastName }: registerType) => {
-      const payload: registerType = {
+  const { mutate: loginUser, isLoading } = useMutation({
+    mutationFn: async ({ username, password }: loginType) => {
+      const payload: loginType = {
         username,
-        firstName,
         password,
-        lastName,
       };
-      const response = await axios.post("/api/auth/register", payload);
+      const response = (await axios.post("/api/auth/login", payload)).data;
+      return response.user;
     },
     onError: (err: any) => {
       return toast({
-        title: "Problem with registration",
+        title: "Problem with logging",
         description: err.response.data,
         variant: "destructive",
       });
     },
-    onMutate: () => {
-      console.log("proceeding");
-    },
-    onSuccess: () => {
-      router.push("/login");
+    onSuccess: (user: GlobalUser) => {
+      router.push("/");
+      useStore.setState({
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        updatedAt: user.updatedAt,
+      });
     },
   });
 
   //SUBMIT
-  const onSubmit = (data: registerType) => {
-    createUser(data);
+  const onSubmit = (data: loginType) => {
+    loginUser(data);
   };
 
   // FORM
@@ -54,21 +58,15 @@ const page = () => {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<registerType>({
-    resolver: zodResolver(registerScehma),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      password: "",
-      username: "",
-    },
+  } = useForm<loginType>({
+    resolver: zodResolver(loginSchema),
   });
 
   return (
     <div className="bg-slate h-screen flex items-center justify-center">
       <Card className="bg-slate-900 w-[350px]  border-white border-r-2 text-slate-50">
         <CardHeader>
-          <CardTitle>Register</CardTitle>
+          <CardTitle>Login</CardTitle>
           <CardDescription>You need to be authorized to view this site</CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,16 +79,8 @@ const page = () => {
               <Label className="pl-1 ">Password</Label>
               <Input id="password" type="password" className="text-black font-[500] h-[35px]" placeholder="Password" {...register("password")} />
             </div>
-            <div className="flex flex-col gap-2">
-              <Label className="pl-1 ">First Name</Label>
-              <Input id="firstName" type="text" className="text-black font-[500] h-[35px]" placeholder="John" {...register("firstName")} />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label className="pl-1 ">Last Name</Label>
-              <Input id="lastName" type="text" className="text-black font-[500] h-[35px]" placeholder="Doe" {...register("lastName")} />
-            </div>
             <Button type="submit" variant={"ghost"} disabled={isLoading} className="text-white border-white border-[1px] w-[30%] mt-2">
-              Register
+              Login
             </Button>
           </form>
         </CardContent>
